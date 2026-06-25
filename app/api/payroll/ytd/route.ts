@@ -17,16 +17,32 @@ export const GET = withAuth(async (req: NextRequest, _ctx, { userId }) => {
 
     if (fyParam) {
       const records = await payrollService.getByFinancialYear(userId, fyParam);
-      return NextResponse.json({ financialYear: fyParam, records });
+      const hasData = records.length > 0;
+      return NextResponse.json({
+        financialYear: fyParam,
+        records,
+        hasData,
+        ...(hasData ? {} : {
+          message: `No payroll records found for financial year ${fyParam}. Add records on the Payroll page or upload a payslip.`,
+        }),
+      });
     }
 
     const year = yearParam ? Number(yearParam) : new Date().getFullYear();
-    if (!Number.isFinite(year)) {
-      return NextResponse.json({ error: "Invalid year parameter" }, { status: 400 });
+    if (!Number.isFinite(year) || year < 2000 || year > 2100) {
+      return NextResponse.json({ error: "Invalid year parameter — must be a calendar year (e.g. 2025)" }, { status: 400 });
     }
 
-    const ytd = await payrollService.getYtd(userId, year);
-    return NextResponse.json(ytd);
+    const ytd     = await payrollService.getYtd(userId, year);
+    const hasData = ytd.monthsRecorded > 0;
+
+    return NextResponse.json({
+      ...ytd,
+      hasData,
+      ...(hasData ? {} : {
+        message: `No payroll records found for ${year}. Add records on the Payroll page or upload a payslip.`,
+      }),
+    });
   } catch (err) {
     const { error, status } = toApiError(err);
     return NextResponse.json({ error }, { status });

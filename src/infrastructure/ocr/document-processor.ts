@@ -91,6 +91,55 @@ import type { ExtractedFields }      from "./field-extractor";
 import type { ValidationIssue }      from "./field-validator";
 import type { OcrJsonInput }         from "./processors/ocr-json.processor";
 
+// ─── File signature (magic byte) validation ───────────────────────────────────
+//
+// Catches files that declare one MIME type in their Content-Type header but are
+// actually a different (or corrupted) format. This matters because:
+//   1. A corrupt PDF that passes the MIME check would silently produce zero-OCR output.
+//   2. A crafted file could exploit a MIME-type-based code path it wasn't intended for.
+//
+// We check magic bytes rather than relying on the client-supplied MIME type alone.
+
+interface SignatureCheck {
+  isValid:    boolean;
+  detected:   string;   // what we actually found, e.g. "image/png"
+  declared:   string;   // what the caller claimed
+  isTruncated: boolean; // buffer too small to read magic bytes
+}
+
+const MAGIC: Array<{ mime: string; offset: number; bytes: number[] }> = [
+  // PDF: "%PDF"
+  { mime: "application/pdf", offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] },
+  // PNG: "\x89PNG\r\n\x1a\n"
+  { mime: "image/png",       offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+  // JPEG: "\xFF\xD8\xFF"
+  { mime: "image/jpeg",      offset: 0, bytes: [0xff, 0xd8, 0xff] },
+  // WebP: "RIFF????WEBP"  (bytes 8-11 are "WEBP")
+  { mime: "image/webp",      offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
+];
+
+function validateFileSignature(buffer: Buffer, declaredMime: string): SignatureCheck {
+  const MIN_BYTES = 12;
+  if (buffer.length < MIN_BYTES) {
+    return { isValid: false, detected: "unknown", declared: declaredMime, isTruncated: true };
+  }
+
+  for (const sig of MAGIC) {
+    const end = sig.offset + sig.bytes.length;
+    if (buffer.length < end) continue;
+    const slice = [...buffer.subarray(sig.offset, end)];
+    if (slice.every((b, i) => b === sig.bytes[i])) {
+      const mimeMatch =
+        sig.mime === declaredMime ||
+        // jpeg and jpg are the same format
+        (sig.mime === "image/jpeg" && declaredMime === "image/jpg");
+      return { isValid: mimeMatch, detected: sig.mime, declared: declaredMime, isTruncated: false };
+    }
+  }
+
+  return { isValid: false, detected: "unknown/binary", declared: declaredMime, isTruncated: false };
+}
+
 // ─── Input types ──────────────────────────────────────────────────────────────
 
 export interface FileInput {
@@ -197,6 +246,22 @@ export async function processDocument(input: DocumentInput): Promise<StructuredP
   let durationMs    = 0;
   let processorUsed: StructuredPayrollData["processorUsed"] = "image";
   let preExtracted:  ExtractedFields | null = null;
+
+  // ── STEP 1a: File integrity guard (file inputs only) ────────────────────────
+  // Validate magic bytes BEFORE classify/extract so a corrupted or misrepresented
+  // file never reaches the OCR engine and produces silently wrong output.
+  if (input.kind === "file") {
+    const sig = validateFileSignature(input.buffer, input.mimeType);
+    if (sig.isTruncated) {
+      throw new Error("File is too small to be a valid payslip (less than 12 bytes)");
+    }
+    if (!sig.isValid) {
+      throw new Error(
+        `File content does not match the declared MIME type "${input.mimeType}" ` +
+        `(detected: "${sig.detected}"). Re-export the document and try again.`,
+      );
+    }
+  }
 
   if (input.kind === "ocr-json") {
     const result = processOcrJson(input.payload);

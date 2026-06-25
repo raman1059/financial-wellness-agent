@@ -115,7 +115,14 @@ export interface AuditMetadataMap {
   // Security
   PERMISSION_DENIED:      { requiredPermission: string; callerRole: string; endpoint: string };
   RATE_LIMIT_EXCEEDED:    { limit: number; windowMs: number; retryAfterMs: number };
-  SUSPICIOUS_REQUEST:     { reason: string; requestId?: string };
+  SUSPICIOUS_REQUEST:     {
+    reason:      string;
+    triggers:    string[];
+    severity:    "HIGH" | "MEDIUM" | "LOW";
+    categories:  string[];
+    blocked:     boolean;
+    requestId?:  string;
+  };
 }
 
 // ─── Severity map (deterministic — not a caller decision) ─────────────────────

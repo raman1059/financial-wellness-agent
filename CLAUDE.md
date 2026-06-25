@@ -207,31 +207,233 @@ Example: `"Your gross was ₹1,40,000 [source:tu_abc123:grossSalary]"`
 
 ## Prompts Used to Build This Project
 
-These are the actual role-based prompts that drove each major design session:
+These are the 16 role-based prompts used in exact order across the design and implementation sessions. Each prompt is reproduced verbatim, followed by what it produced.
 
-### 1. AI Solutions Architect — AI Assistant Workflow
+---
+
+### Prompt 1 — Understand the Assignment
+```
+You are a Principal Engineer.
+
+Analyze the following Financial Wellness & Tax AI Agent requirements.
+
+First, identify:
+1. Functional requirements
+2. Non-functional requirements
+3. Security requirements
+4. AI-specific requirements
+5. Optional bonus features
+
+Then create an implementation roadmap prioritized for a 1-hour engineering assessment.
+
+Do not generate code yet.
+Focus on architecture and execution plan.
+```
+→ Produced: requirements analysis, 5-category breakdown (functional, non-functional, security, AI-specific, bonus), prioritised implementation roadmap used to sequence all subsequent prompts.
+
+---
+
+### Prompt 2 — Define Tech Stack
+```
+Act as a Staff Engineer.
+
+I am building this solution using Next.js full-stack.
+
+Recommend the complete technology stack including:
+- Frontend
+- Backend APIs
+- Database
+- ORM
+- Authentication
+- AI integration
+- Document processing
+- Validation
+- Logging
+
+Justify each choice based on development speed, maintainability, and assessment expectations.
+
+Provide final stack recommendations.
+```
+→ Produced: final stack — Next.js 15 App Router, TypeScript 5, PostgreSQL, Prisma 6, Auth.js v5, Anthropic SDK, Zod, Pino, Inngest, Tailwind CSS. Justifications documented in README.
+
+---
+
+### Prompt 3 — Project Structure
+```
+Act as a Lead Engineer.
+
+Create a production-inspired folder structure for a Next.js full-stack application.
+
+Requirements:
+- Authentication
+- Payroll service
+- Payslip upload
+- OCR processing
+- AI orchestration
+- Tax simulation
+- Audit logging
+- Access control
+
+Explain responsibility of every folder.
+
+Follow clean architecture principles.
+```
+→ Produced: the four-layer clean architecture (`app/` → `src/application/` → `src/infrastructure/` → `src/domain/`) with `src/lib/` for cross-cutting concerns. Every folder's single responsibility defined here.
+
+---
+
+### Prompt 4 — Database Schema
+```
+Act as a Database Architect.
+
+Design PostgreSQL schema using Prisma.
+
+Entities:
+- Employee
+- PayrollRecord
+- Payslip
+- TaxDeclaration
+- InvestmentProof
+- ChatSession
+- ChatMessage
+- AuditLog
+
+Requirements:
+- Multi-user support
+- User-level isolation
+- Ownership validation
+- Audit tracking
+
+Generate complete Prisma schema.
+```
+→ Produced: `prisma/schema.prisma` — 9 models (User + 8 above), all enums, denormalised `userId` on every model for RLS-friendly ownership queries, composite indexes.
+
+---
+
+### Prompt 5 — Authentication & Authorization
+```
+Act as a Security Architect.
+
+Design authentication and authorization.
+
+Requirements:
+- Employee can access only their own payroll data
+- JWT based authentication
+- Middleware protection
+- Ownership verification
+- Role support for Admin and Employee
+- Prevention of cross-user data leakage
+
+Provide architecture, flow diagram and implementation strategy.
+```
+→ Produced: Auth.js v5 credentials provider, `withAuth`/`withPermission`/`withRoles` HOFs, `assertOwnership()` returning 404 (not 403) to prevent ID enumeration, `can(role, action)` RBAC helper, `resource:verb:scope` permission strings.
+
+---
+
+### Prompt 6 — Payroll Domain Design
+```
+Act as a FinTech Solution Architect.
+
+Design the payroll domain model.
+
+Support:
+- Basic Salary
+- HRA
+- LTA
+- Special Allowance
+- PF
+- Professional Tax
+- TDS
+- Reimbursements
+- Gross Pay
+- Net Pay
+- YTD values
+
+Create DTOs, service contracts and API response structures.
+```
+→ Produced: `PayrollRecord` entity shape, YTD aggregation logic, Indian payroll formulae (PF = 12% basic, PT state slab, gross/net computation), `GET /api/payroll/ytd` response schema, 12-component payslip breakdown.
+
+---
+
+### Prompt 7 — Payslip Upload Flow
+```
+Act as a Senior Backend Engineer.
+
+Design the payslip upload workflow.
+
+Requirements:
+- PDF upload
+- Image upload
+- Mock OCR support
+- Field extraction
+- Validation
+- Storage
+- Error handling
+
+Explain end-to-end flow from upload to structured data generation.
+
+Provide API design.
+```
+→ Produced: `POST /api/documents/upload` multipart handler, mock storage path, 3-status lifecycle (UPLOADED → PROCESSING → VERIFIED/FAILED), `Payslip` record creation, Inngest background job trigger for async OCR.
+
+---
+
+### Prompt 8 — OCR & Document Processing
+```
+Act as an AI Engineer.
+
+Design a document processing module.
+
+Input:
+- Payslip PDF
+- Payslip Image
+- Mock OCR JSON
+
+Output:
+- Structured payroll data
+
+Handle:
+- Missing fields
+- Incorrect OCR values
+- Inconsistent formats
+- Duplicate uploads
+
+Provide implementation pseudocode.
+```
+→ Produced: `src/infrastructure/ocr/` — 8-step pipeline (Classify → Extract → Normalize → Extract Fields → Impute → Validate → Score → Return), `mock-ocr.engine.ts`, `field-imputor.ts` (derives gross/pf from parts), `field-validator.ts` (cross-field consistency checks), OCR confidence scoring.
+
+---
+
+### Prompt 9 — AI Assistant Architecture
 ```
 Act as an AI Solutions Architect.
+
 Design the AI assistant workflow.
+
 Requirements:
 - User asks payroll questions
 - AI uses payroll records
 - AI uses uploaded payslips
 - AI answers only from available data
 - No hallucinations
+
 Explain:
 - Retrieval strategy
 - Context building
 - Prompt orchestration
 - Source citation
 - Refusal behavior
+
 Provide sequence diagrams.
 ```
-→ Produced: intent classifier, context builder, tool-use loop, grounding service, confidence scorer.
+→ Produced: intent classifier (`intent-classifier.ts`), context builder (`context-builder.ts`), Claude tool-use loop (multi-turn until `end_turn`), grounding service, confidence scorer. Citation format `[source:TOOL_USE_ID:FIELD_NAME]` defined here.
 
-### 2. Production System Prompt Design
+---
+
+### Prompt 10 — System Prompt
 ```
 Create a production-grade system prompt for a Financial Wellness AI Agent.
+
 Rules:
 - Answer only from provided payroll data
 - Answer only from uploaded payslips
@@ -240,73 +442,136 @@ Rules:
 - Mention assumptions explicitly
 - Refuse unsupported tax advice
 - Explain payroll terms in employee-friendly language
+
 Return final system prompt.
 ```
-→ Produced: `src/infrastructure/ai/prompts/system.prompt.ts` (353 lines, 9 sections, G-1 through G-6 rules, 7 named failure modes, 12-term glossary).
+→ Produced: `src/infrastructure/ai/prompts/system.prompt.ts` — 353 lines, 9 sections, G-1 through G-6 grounding rules, 7 named failure modes, 12-term payroll glossary, salary table template. Never shorten or simplify this file.
 
-### 3. Senior Backend Engineer — AI Chat Endpoint
+---
+
+### Prompt 11 — Chat API
 ```
 Act as a Senior Backend Engineer.
+
 Design the AI chat endpoint.
+
 Input:
 - User question
 - Employee ID
 - Payroll data
 - Payslip data
+
 Output:
 - Grounded answer
 - Sources used
 - Confidence note
+
 Provide request/response schema and implementation flow.
 ```
-→ Produced: `app/api/chat/route.ts` (14-step implementation, streaming + JSON modes, rate limiting, session management).
+→ Produced: `app/api/chat/route.ts` — 14-step handler (auth → rate limit → validate → session → intent → context → tool-use loop → ground → score → persist → audit → respond), streaming (Vercel AI SDK) + non-streaming modes, session management.
 
-### 4. Tax-Tech Architect — Tax Saving Simulator
+---
+
+### Prompt 12 — Tax Simulation Module
 ```
 Act as a Tax-Tech Architect.
+
 Design a tax-saving simulator.
+
 Support:
 - Section 80C
 - Declared deductions
 - Additional investment scenarios
+
 Requirements:
 - Clearly document assumptions
 - Avoid compliance guarantees
 - Show estimated savings
 - Explain calculations
+
 Provide formulas, APIs and pseudocode.
 ```
-→ Produced: `tax-bracket.service.ts`, `tax-deduction.service.ts`, `simulate-tax-savings.usecase.ts`, `POST /api/tax/simulate`.
+→ Produced: `tax-bracket.service.ts` (slab computation, surcharge, cess, 87A rebate), `tax-deduction.service.ts` (80C/80CCD/80D/24b/80E/HRA pure functions), `run-tax-simulation.usecase.ts`, `simulate-tax-savings.usecase.ts`, `POST /api/tax/simulate`.
 
-### 5. Investment Proof Checklist Designer
+---
+
+### Prompt 13 — Investment Proof Checklist
 ```
 Design a personalized investment-proof checklist generator.
+
 Inputs:
 - Employee declarations
 - Submitted proofs
 - Missing proofs
+
 Output:
 - Pending items
 - Submitted items
 - Recommended actions
+
 Generate service design, APIs and response structure.
 ```
-→ Produced: `proof-catalog.ts` (13 proof types), `generate-proof-checklist.usecase.ts`, `GET /api/tax/checklist`.
+→ Produced: `src/domain/services/proof-catalog.ts` (13 proof types with metadata), `generate-proof-checklist.usecase.ts` (5 proof statuses, tax-at-risk computation, marginal rate, 5 recommendation categories), `GET /api/tax/checklist`.
 
-### 6. Security Engineer — Audit Logging
+---
+
+### Prompt 14 — Audit Logging
 ```
 Act as a Security Engineer.
+
 Design audit logging.
+
 Track:
 - Login
 - Payslip upload
 - Payroll access
 - AI queries
 - Tax simulations
+
 Design schema, APIs and logging strategy.
+
 Explain how logs help with compliance and debugging.
 ```
-→ Produced: `src/domain/audit/audit-events.ts` (27 typed events), updated `AuditService.logEvent<A>()`, `GET /api/audit`, `request-context.ts`, compliance tags (DPDP/SOC2/ISO27001).
+→ Produced: `src/domain/audit/audit-events.ts` (27 typed `AuditAction` values, `AuditMetadataMap`, compile-time metadata enforcement, `ACTION_SEVERITY`, `ACTION_COMPLIANCE_TAGS` for DPDP/SOC2/ISO27001), `AuditService.logEvent<A>()`, `GET /api/audit`, `request-context.ts`, 12 seed audit log entries.
+
+---
+
+### Prompt 15 — Edge Cases
+```
+Act as a QA Architect.
+
+Identify all edge cases.
+
+Cover:
+- Missing payslip fields
+- Corrupted uploads
+- Unauthorized access
+- Empty payroll records
+- OCR failures
+- Prompt injection
+- Invalid tax declarations
+- Missing YTD values
+
+Provide expected behavior for every case.
+```
+→ Produced: 18 documented edge cases in README (OCR mismatch warning when `|declared − parsed| > ₹100`, cross-user access → 404, empty payroll → hard "do not fabricate" warning in system prompt, prompt injection → intent classifier drops to safe tool allowlist, FY format validation regex, declaration-without-payroll handling).
+
+---
+
+### Prompt 16 — Complete Implementation
+```
+Using all previous design decisions, generate the implementation plan in exact build order.
+
+For each step provide:
+- Files to create
+- APIs to build
+- Database changes
+- UI screens
+- Testing required
+
+Optimize for completing the assessment within 1 hour while still satisfying all mandatory requirements.
+```
+→ Produced: the sequenced build plan used across all sessions — config → schema → auth → domain → application → infrastructure → routes → mock data enrichment → audit logging — preserved in the plan file at `~/.claude/plans/mossy-sleeping-crescent.md`.
 
 ---
 

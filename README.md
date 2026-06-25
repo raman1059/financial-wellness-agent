@@ -21,6 +21,23 @@ This system reduces that operational load by providing:
 
 ---
 
+
+### Quick Start (zero env vars needed)
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/YOUR_USERNAME/financial-wellness-agent.git
+cd financial-wellness-agent
+
+# 2. Install dependencies
+npm install
+
+# 3. Start the development server
+npm run dev
+
+# 4. Open http://localhost:3000
+# Login with: demo@example.com / demo1234
+```
 ## Live Demo
 
 ```
@@ -45,24 +62,6 @@ source ~/.zshrc   # or ~/.bash_profile
 nvm install 20
 nvm use 20
 ```
-
-### Quick Start (zero env vars needed)
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/financial-wellness-agent.git
-cd financial-wellness-agent
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the development server
-npm run dev
-
-# 4. Open http://localhost:3000
-# Login with: demo@example.com / demo1234
-```
-
 ### With Live AI (optional)
 
 ```bash

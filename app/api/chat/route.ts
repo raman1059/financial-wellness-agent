@@ -30,6 +30,7 @@ import { chatRequestSchema }             from "@/lib/validation/schemas/chat.sch
 import { SYSTEM_PROMPT }                 from "@/infrastructure/ai/prompts/system.prompt";
 import { classifyIntent, toolsForIntent } from "@/infrastructure/ai/intent-classifier";
 import { buildUserSnapshot, buildSystemPrompt } from "@/infrastructure/ai/context-builder";
+import { detectPromptInjection, injectionRefusalMessage } from "@/lib/edge-cases/injection-detector";
 import { groundingService }              from "@/application/services/grounding.service";
 import { scoreConfidence }               from "@/application/services/confidence-scorer";
 import { prisma }                        from "@/infrastructure/db/prisma/client";
@@ -139,6 +140,30 @@ export async function POST(req: NextRequest) {
   }
 
   const { message, history, sessionId, financialYear, stream: wantStream } = parsed.data;
+
+  // ── 3.5. Prompt injection detection ───────────────────────────────────────
+  // Runs after schema validation so `message` is a clean, length-bounded string.
+  // HIGH severity → block immediately and log. MEDIUM/LOW → log and continue.
+  // The intent classifier already limits which tools Claude can call, so even
+  // undetected LOW-severity attempts can't access data beyond the user's own.
+  const injection = detectPromptInjection(message);
+  if (injection.isSuspicious) {
+    void auditService.logEvent(
+      "SUSPICIOUS_REQUEST",
+      {
+        reason:     `Prompt injection attempt — severity ${injection.severity}`,
+        triggers:   injection.triggers.map((t) => t.pattern),
+        severity:   injection.severity,
+        categories: injection.categories,
+        blocked:    injection.severity === "HIGH",
+      },
+      { userId, resourceType: "ChatSession" },
+    );
+
+    if (injection.severity === "HIGH") {
+      return errorResponse(injectionRefusalMessage(), 400, "INJECTION_DETECTED");
+    }
+  }
 
   // ── 4. Session management ──────────────────────────────────────────────────
   let chatSessionId = sessionId;
