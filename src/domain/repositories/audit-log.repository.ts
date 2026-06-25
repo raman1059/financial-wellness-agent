@@ -1,9 +1,7 @@
-import type { AuditAction } from "@prisma/client";
-
 export interface CreateAuditLogInput {
   userId?: string;
   actorId?: string;
-  action: AuditAction;
+  action: string;
   resourceType: string;
   resourceId?: string;
   metadata?: Record<string, unknown>;

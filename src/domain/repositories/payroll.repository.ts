@@ -1,4 +1,4 @@
-import type { PayrollRecord } from "@prisma/client";
+import type { MockPayrollRecord as PayrollRecord } from "../../../mock-data";
 
 export interface IPayrollRepository {
   findAllByUser(userId: string): Promise<PayrollRecord[]>;

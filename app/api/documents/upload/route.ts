@@ -1,60 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/auth.config";
-import { prisma } from "@/infrastructure/db/prisma/client";
-import { createHash } from "crypto";
-import { auditService } from "@/infrastructure/audit/db-audit-logger";
+import { uploadPayslipUseCase } from "@/application/use-cases/documents/upload-payslip.usecase";
+import { toApiError } from "@/lib/errors/app-error";
+import { withPermission } from "@/lib/middleware/with-auth";
 
-const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg"];
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+/**
+ * POST /api/documents/upload
+ *
+ * Accepts multipart/form-data with a single "file" field.
+ * Runs synchronous mock OCR and returns structured results immediately.
+ *
+ * HTTP status codes:
+ *   201 — uploaded and parsed successfully
+ *   200 — duplicate file (already uploaded); returns existing record
+ *   400 — missing file / empty file
+ *   409 — duplicate (treated as 200 for idempotency, kept for explicit detection)
+ *   413 — file too large
+ *   415 — unsupported MIME type
+ *   422 — OCR succeeded but validation failed (fields don't reconcile)
+ */
+export const POST = withPermission(
+  "documents:write:own",
+  async (req: NextRequest, _ctx, { userId }) => {
+    try {
+      const formData = await req.formData();
+      const file = formData.get("file") as File | null;
 
-export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      if (!file) {
+        return NextResponse.json({ error: "No file provided in form field 'file'" }, { status: 400 });
+      }
 
-  const employee = await prisma.employee.findUnique({ where: { userId: session.user.id } });
-  if (!employee) return NextResponse.json({ error: "Employee profile not found" }, { status: 404 });
+      const result = await uploadPayslipUseCase.execute({ userId, file });
 
-  const formData = await req.formData();
-  const file = formData.get("file") as File | null;
+      // Duplicate: return 200 so client can treat it as a soft success
+      if (result.isDuplicate) {
+        return NextResponse.json(
+          { ...result, message: "File already uploaded — returning existing record" },
+          { status: 200 },
+        );
+      }
 
-  if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  if (!ALLOWED_TYPES.includes(file.type)) return NextResponse.json({ error: "Unsupported file type" }, { status: 415 });
-  if (file.size > MAX_SIZE) return NextResponse.json({ error: "File too large (max 10 MB)" }, { status: 413 });
+      // OCR ran but validation failed — partial result, client can retry or escalate
+      if (result.status === "FAILED") {
+        return NextResponse.json(
+          { ...result, message: "File uploaded but OCR validation failed — review issues[]" },
+          { status: 422 },
+        );
+      }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const fileHash = createHash("sha256").update(buffer).digest("hex");
-
-  // Check for duplicate
-  const existing = await prisma.payslip.findFirst({ where: { fileHash, userId: session.user.id } });
-  if (existing) return NextResponse.json({ error: "Duplicate document already uploaded", id: existing.id }, { status: 409 });
-
-  // In production: upload buffer to Supabase Storage and get the key
-  // For demo: store a placeholder key
-  const fileKey = `${session.user.id}/${Date.now()}-${file.name}`;
-
-  const payslip = await prisma.payslip.create({
-    data: {
-      employeeId: employee.id,
-      userId: session.user.id,
-      fileName: file.name,
-      fileKey,
-      fileMimeType: file.type,
-      fileSizeBytes: file.size,
-      fileHash,
-      status: "PENDING",
-    },
-  });
-
-  await auditService.log({
-    userId: session.user.id,
-    action: "DOCUMENT_UPLOADED",
-    resourceType: "Payslip",
-    resourceId: payslip.id,
-    metadata: { fileName: file.name, fileSize: file.size },
-  });
-
-  // In production: send inngest event to trigger OCR
-  // await inngest.send({ name: "payslip/uploaded", data: { payslipId: payslip.id, userId: session.user.id } });
-
-  return NextResponse.json({ id: payslip.id, status: "PENDING" }, { status: 201 });
-}
+      return NextResponse.json(result, { status: 201 });
+    } catch (err) {
+      const { error, status } = toApiError(err);
+      return NextResponse.json({ error }, { status });
+    }
+  },
+);

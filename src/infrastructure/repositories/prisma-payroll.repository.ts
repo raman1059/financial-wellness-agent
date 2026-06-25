@@ -1,5 +1,5 @@
 import type { IPayrollRepository } from "@/domain/repositories/payroll.repository";
-import type { PayrollRecord } from "@prisma/client";
+import type { MockPayrollRecord as PayrollRecord } from "../../../mock-data";
 import { prisma } from "@/infrastructure/db/prisma/client";
 
 export class PrismaPayrollRepository implements IPayrollRepository {

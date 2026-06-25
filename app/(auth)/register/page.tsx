@@ -5,7 +5,6 @@ import { prisma } from "@/infrastructure/db/prisma/client";
 import { signIn } from "@/lib/auth/auth.config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import bcrypt from "bcryptjs";
 
 export const metadata: Metadata = { title: "Create Account" };
 
@@ -31,9 +30,9 @@ export default function RegisterPage() {
           const existing = await prisma.user.findUnique({ where: { email } });
           if (existing) redirect("/register?error=exists");
 
-          const passwordHash = await bcrypt.hash(password, 12);
+          // Mock store: passwordHash field is mapped to passwordPlain in mock-data.ts
           const user = await prisma.user.create({
-            data: { email, name, passwordHash, role: "USER" },
+            data: { email, name, passwordHash: password, role: "USER" },
           });
 
           await prisma.employee.create({ data: { userId: user.id } });
@@ -42,7 +41,7 @@ export default function RegisterPage() {
         }}
         className="space-y-4"
       >
-        <Input id="name" name="name" type="text" label="Full name" placeholder="Priya Sharma" required />
+        <Input id="name" name="name" type="text" label="Full name" placeholder="Arpit Tiwari" required />
         <Input id="email" name="email" type="email" label="Email address" placeholder="you@example.com" required />
         <Input id="password" name="password" type="password" label="Password" placeholder="Min. 6 characters" required minLength={6} />
 

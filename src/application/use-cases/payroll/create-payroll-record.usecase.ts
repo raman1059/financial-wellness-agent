@@ -2,7 +2,7 @@ import type { IPayrollRepository } from "@/domain/repositories/payroll.repositor
 import type { AuditService } from "@/application/services/audit.service";
 import type { CreatePayrollInput } from "@/lib/validation/schemas/payroll.schema";
 import { ValidationError } from "@/lib/errors/app-error";
-import type { PayrollRecord } from "@prisma/client";
+import type { MockPayrollRecord as PayrollRecord } from "../../../../mock-data";
 
 export class CreatePayrollRecordUseCase {
   constructor(
