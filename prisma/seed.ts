@@ -13,7 +13,7 @@ async function main() {
     update: {},
     create: {
       email: "demo@example.com",
-      name: "Priya Sharma",
+      name: "Arpit Tiwari",
       passwordHash,
       role: "USER",
       emailVerified: new Date(),
