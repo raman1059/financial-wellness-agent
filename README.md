@@ -50,6 +50,59 @@ No environment variables are required to run the demo. All data is served from a
 
 ---
 
+## Screenshots
+
+> Replace each image below with an actual screenshot after running `npm run dev`.  
+> Save files to `public/screenshots/` and the Markdown will update automatically.
+
+### Login
+![Login page — email and password form](public/screenshots/login.png)
+*Clean login screen. Use `demo@example.com` / `demo1234`.*
+
+---
+
+### Dashboard
+![Dashboard — salary overview and YTD summary cards](public/screenshots/dashboard.png)
+*Overview cards showing gross pay, net pay, TDS deducted, and YTD totals for the current financial year.*
+
+---
+
+### Payroll History
+![Payroll history table — monthly records with earnings and deductions](public/screenshots/payroll.png)
+*Sortable table of all payroll records. Each row breaks down basic, HRA, LTA, special allowance, PF, PT, and TDS.*
+
+---
+
+### Payslip Upload & OCR
+![Document upload page — drag-and-drop with OCR status badge](public/screenshots/upload.png)
+*Drag-and-drop uploader. After upload, shows OCR confidence score, imputed fields, and any validation warnings.*
+
+---
+
+### AI Financial Assistant
+![AI chat — grounded answer with source citation badges](public/screenshots/chat.png)
+*The AI answers only from payroll data and uploaded payslips. Every ₹ figure is traced to a source record.*
+
+---
+
+### Tax Estimate (Old vs New Regime)
+![Tax estimate page — side-by-side Old and New Regime comparison](public/screenshots/tax-estimate.png)
+*Live tax simulation for FY 2024-25. Shows taxable income, slabs applied, 87A rebate, surcharge, and effective rate for both regimes.*
+
+---
+
+### Investment Proof Checklist
+![Investment proof checklist — status badges and tax-at-risk amounts](public/screenshots/proof-checklist.png)
+*Per-declaration checklist with APPROVED / PENDING / REJECTED / NEEDS_RESUBMISSION status. Shows tax-at-risk for missing proofs.*
+
+---
+
+### Audit Log Viewer
+![Audit log table — timestamped events with severity and compliance tags](public/screenshots/audit-logs.png)
+*Admin-only view. Every login, payroll access, AI query, and document upload is logged with severity, IP address, and compliance tags (DPDP / SOC 2 / ISO 27001).*
+
+---
+
 ## How to Run
 
 ### Prerequisites
