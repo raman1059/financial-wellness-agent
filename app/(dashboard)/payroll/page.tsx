@@ -30,10 +30,12 @@ export default async function PayrollPage() {
           <h1 className="text-xl font-semibold text-gray-900">Payroll Records</h1>
           <p className="text-sm text-gray-500">YTD Gross: {fmt(ytdGross)}</p>
         </div>
-        <Button size="sm">
-          <Plus className="h-4 w-4" />
-          Add Record
-        </Button>
+        <Link href="/payroll/new">
+          <Button size="sm">
+            <Plus className="h-4 w-4" />
+            Add Record
+          </Button>
+        </Link>
       </div>
 
       <Card>
